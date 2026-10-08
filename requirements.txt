@@ -1,0 +1,26 @@
+# --- core app ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.6
+jinja2>=3.1.4
+python-multipart>=0.0.9
+pydantic>=2.9.2
+numpy>=1.26.4
+scipy>=1.13.1
+
+# --- speech to text ---
+SpeechRecognition>=3.10.4
+pydub>=0.25.1
+sherpa-onnx>=1.13.0
+
+# --- diffusion model (trained on CPU; see train_diffusion.py) ---
+torch>=2.0
+
+# --- real captured-motion backend / training corpus (CPU-only, no GPU needed) ---
+# Provides real MediaPipe Holistic captured signing motion.
+pose-format>=0.4.1
+simplemma>=1.0.0
+spoken-to-signed @ git+https://github.com/sign-language-processing/spoken-to-signed-translation.git
+
+# Note: uses Starlette's current (request-first) TemplateResponse convention.
+# On older FastAPI/Starlette, revert main.py's index() to the legacy form:
+#   templates.TemplateResponse("index.html", {"request": request, ...})

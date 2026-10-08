@@ -1,0 +1,46 @@
+# Python & Virtual Environments
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Node.js / Next.js Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Unused MMS / External Tools & Temporary Scratch Files
+tools/
+Dictionary-for-MMS-Player/
+mms_player/
+scratch/
+static/animations/
+frontend/public/models/animations/
+frontend/public/models/mms_avatar.glb
+frontend/public/models/test_hi.glb
+frontend/public/models/Michelle_dark.glb
+test_hi.*
+michelle_test.glb
+soldier_test.glb
+diffuse*.png
+download_blender.py
+download_dictionary.py
+
+# Local SQLite DB & Runtime Logs
+*.db-journal
+*.db-wal
+*.db-shm
+*.log

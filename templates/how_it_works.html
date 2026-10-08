@@ -1,0 +1,85 @@
+﻿{% extends "base.html" %}
+
+{% block title %}How It Works &middot; Pipeline Architecture &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:900px;">
+  <h1>How the synthesis pipeline works</h1>
+  <p class="lead">
+    A low-latency, modular pipeline converting spoken audio or free-form text into continuous,
+    grammatically accurate 3D signing motion.
+  </p>
+
+  <div class="step-sequence">
+    <!-- Step 1 -->
+    <div class="step-row">
+      <div class="step-marker">01</div>
+      <div class="step-body">
+        <h3>Audio ingestion and speech recognition</h3>
+        <p>
+          Microphone input is captured natively in the browser via the Web Audio API as 16kHz uncompressed
+          linear PCM WAV buffers. This eliminates external transcoding dependencies like FFmpeg on the server
+          and feeds directly into local or streaming speech-to-text models.
+        </p>
+        <div class="step-detail-box">
+          <strong>Latency budget:</strong> &lt; 150ms per audio chunk. Direct PCM pass-through prevents codec compression lag.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-row">
+      <div class="step-marker">02</div>
+      <div class="step-body">
+        <h3>Linguistic analysis and non-manual marker tagging</h3>
+        <p>
+          English text is parsed to approximate sign-language grammar: stopwords and copulas are dropped,
+          time words are fronted, and intent is classified. Questions and negations are tagged with
+          grammatical non-manual markers (such as raised eyebrows for yes/no questions, furrowed brows for
+          WH-questions, and head shakes for negation).
+        </p>
+        <div class="step-detail-box">
+          <strong>Linguistic preservation:</strong> In sign language, non-manual signals are grammatical requirements, not optional emotional expressions.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-row">
+      <div class="step-marker">03</div>
+      <div class="step-body">
+        <h3>Diffusion-based motion synthesis</h3>
+        <p>
+          A conditional 4-layer Transformer Denoising Diffusion Probabilistic Model (DDPM) operates on an
+          anatomically informed 66-point body representation (8 upper-body points, 21 joints per hand, and 16
+          facial landmarks). Sampling is accelerated using DDIM respacing across 25 steps, synthesizing complete
+          signs 3 to 5 times faster than real-time on CPU.
+        </p>
+        <div class="step-detail-box">
+          <strong>Coarticulation:</strong> Neighbouring signs are cross-faded using cosine blend transitions, ensuring smooth hand travel without teleportation.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-row">
+      <div class="step-marker">04</div>
+      <div class="step-body">
+        <h3>Real-time WebGL rendering and streaming</h3>
+        <p>
+          Motion frames stream over WebSockets in low-latency chunks as each sign is synthesized. In the
+          browser, Three.js updates vertex position buffers at 25+ FPS, driven by a clock-synced animation
+          loop that plays smoothly even under background tab throttling.
+        </p>
+        <div class="step-detail-box">
+          <strong>GPU footprint:</strong> Zero client-side neural inference; the browser only executes lightweight WebGL line/point updates.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:40px; text-align:center;">
+    <a href="/dashboard" class="btn-primary">Test Live in Studio</a>
+  </div>
+</div>
+{% endblock %}

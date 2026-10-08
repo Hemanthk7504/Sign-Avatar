@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Home Workspace &middot; SignAvatar Enterprise{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div id="auth-gate" class="eval-box" style="display:none; max-width:520px; margin:40px auto; text-align:center;">
+    <h2>🔒 Strict Authentication Required</h2>
+    <p>Please sign in with your verified SignAvatar account to access your Home Workspace.</p>
+    <div style="display:flex; justify-content:center; gap:12px;">
+      <a href="/login" class="btn-primary">Sign In</a>
+      <a href="/register" class="btn-secondary">Create Account</a>
+    </div>
+  </div>
+
+  <div id="home-workspace" style="display:none;">
+    <section class="validation-strip" style="margin-top:0; background:linear-gradient(135deg, #0f172a, #1d4ed8); color:#ffffff; border:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+        <div>
+          <span class="brand-badge" style="background:rgba(255,255,255,0.18); color:#ffffff;">✓ Verified Session</span>
+          <h1 id="welcome-title" style="color:#ffffff; margin-top:8px; margin-bottom:4px;">Welcome home</h1>
+          <p id="welcome-bio" style="color:#e2e8f0; margin-bottom:0;">Your personal 3D Sign Language &amp; Social Command Center.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <a href="/community" class="btn-secondary">Open 2-User Social Hub →</a>
+          <a href="/dashboard" class="btn-primary" style="background:#0f172a; border-color:#334155;">Full 3D Studio</a>
+          <button id="logout-btn" class="btn-secondary" style="color:#b91c1c; border-color:#fecaca; background:#fef2f2;">Sign Out</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="margin-top:20px;">
+        <div class="stat-item" style="border-left-color:#60a5fa;">
+          <div id="stat-posts" class="stat-val" style="color:#ffffff;">3</div>
+          <div class="stat-desc" style="color:#cbd5e1;">Community Signed Posts</div>
+        </div>
+        <div class="stat-item" style="border-left-color:#60a5fa;">
+          <div id="stat-dms" class="stat-val" style="color:#ffffff;">3</div>
+          <div class="stat-desc" style="color:#cbd5e1;">2-User Sign Messages</div>
+        </div>
+        <div class="stat-item" style="border-left-color:#60a5fa;">
+          <div id="stat-reactions" class="stat-val" style="color:#ffffff;">5</div>
+          <div class="stat-desc" style="color:#cbd5e1;">Community 🤟 Reactions</div>
+        </div>
+        <div class="stat-item" style="border-left-color:#60a5fa;">
+          <div id="stat-users" class="stat-val" style="color:#ffffff;">3</div>
+          <div class="stat-desc" style="color:#cbd5e1;">Verified Signers</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="eval-workstation">
+      <div class="eval-box">
+        <h3>Social Interaction #1 &middot; Recent Community Sign Feed</h3>
+        <div id="home-feed-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+        <a href="/community" class="btn-primary" style="align-self:flex-start;">Open Full Feed &amp; Post →</a>
+      </div>
+      <div class="eval-box">
+        <h3>Social Interaction #2 &middot; 2-User Direct Sign Messenger</h3>
+        <div id="home-dm-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <a href="/community?tab=messages" class="btn-secondary" style="align-self:flex-start;">Open 2-User Sign Chat →</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function() {
+  const token = localStorage.getItem("sa_auth_token");
+  const gate = document.getElementById("auth-gate");
+  const ws = document.getElementById("home-workspace");
+  if (!token) {
+    gate.style.display = "flex";
+    return;
+  }
+  try {
+    const meRes = await fetch("/api/auth/me", { headers: { "Authorization": "Bearer " + token } });
+    if (!meRes.ok) throw new Error("Unauthorized");
+    const { user } = await meRes.json();
+    ws.style.display = "block";
+    document.getElementById("welcome-title").textContent = "Welcome home, " + user.full_name + " 👋";
+    document.getElementById("welcome-bio").textContent = user.bio || ("Signed in as @" + user.username + " (" + user.preferred_variant + ")");
+
+    const [statsRes, feedRes, dmRes] = await Promise.all([
+      fetch("/api/social/stats", { headers: { "Authorization": "Bearer " + token } }),
+      fetch("/api/social/feed", { headers: { "Authorization": "Bearer " + token } }),
+      fetch("/api/social/messages/" + (user.id === "usr_maya_01" ? "usr_alex_02" : "usr_maya_01"), { headers: { "Authorization": "Bearer " + token } })
+    ]);
+    if (statsRes.ok) {
+      const st = await statsRes.json();
+      document.getElementById("stat-posts").textContent = st.total_posts;
+      document.getElementById("stat-dms").textContent = st.total_dms;
+      document.getElementById("stat-reactions").textContent = st.total_reactions;
+      document.getElementById("stat-users").textContent = st.total_users;
+    }
+    if (feedRes.ok) {
+      const { posts } = await feedRes.json();
+      const feedEl = document.getElementById("home-feed-list");
+      feedEl.innerHTML = posts.slice(0, 3).map(p => `
+        <div class="step-detail-box">
+          <strong>${p.author.full_name} (@${p.author.username} · ${p.variant})</strong>
+          <div style="margin:4px 0; color:var(--text);">${p.content}</div>
+          <div style="font-family:var(--font-mono); font-size:0.76rem; color:var(--accent);">
+            Gloss: ${p.gloss_sequence.map(g => g.gloss).join(" · ")}
+          </div>
+        </div>
+      `).join("");
+    }
+    if (dmRes.ok) {
+      const { messages } = await dmRes.json();
+      const dmEl = document.getElementById("home-dm-list");
+      dmEl.innerHTML = messages.map(m => `
+        <div class="step-detail-box">
+          <strong>${m.sender.full_name} → ${m.recipient.full_name}</strong>
+          <div style="margin:4px 0; color:var(--text);">${m.content}</div>
+          <div style="font-family:var(--font-mono); font-size:0.76rem; color:var(--good);">
+            Gloss: ${m.gloss_sequence.map(g => g.gloss).join(" · ")}
+          </div>
+        </div>
+      `).join("");
+    }
+  } catch {
+    gate.style.display = "flex";
+  }
+
+  document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    await fetch("/api/auth/logout", { method: "POST", headers: { "Authorization": "Bearer " + token } });
+    localStorage.removeItem("sa_auth_token");
+    window.location.href = "/login";
+  });
+})();
+</script>
+{% endblock %}

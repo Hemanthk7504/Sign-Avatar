@@ -1,0 +1,245 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Interpreter & Evaluation Hub &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Interpreter &amp; Deaf User Evaluation Workstation</h1>
+  <p class="lead">
+    Independent validation protocol for certified interpreters and Deaf/hard-of-hearing community members.
+  </p>
+
+  <div class="eval-workstation">
+    <!-- Left: Human Intelligibility Study -->
+    <div class="eval-box">
+      <div>
+        <h2>Human Intelligibility Trial</h2>
+        <p style="font-size:0.88rem;">
+          Participants review generated sequences and record what they understood before viewing the intended sentence.
+        </p>
+      </div>
+
+      <div class="control-group">
+        <label for="eval-role">Participant role</label>
+        <select id="eval-role">
+          <option value="certified_interpreter" selected>Certified Sign Language Interpreter</option>
+          <option value="deaf">Deaf Native Signer</option>
+          <option value="hard_of_hearing">Hard of Hearing Signer</option>
+          <option value="hearing_signer">Hearing Fluent Signer</option>
+          <option value="hearing_non_signer">Hearing Non-Signer</option>
+        </select>
+      </div>
+
+      <div class="row-2">
+        <div class="control-group">
+          <label for="eval-years">Years signing</label>
+          <input type="number" id="eval-years" value="8" min="0" max="80" />
+        </div>
+        <div class="control-group">
+          <label for="eval-lang">Primary language</label>
+          <input type="text" id="eval-lang" value="ASL" />
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="eval-stimulus">Target sentence for evaluation</label>
+        <input type="text" id="eval-stimulus" value="Where is the hospital?" />
+      </div>
+
+      <div class="control-group">
+        <label for="eval-free-recall">Blind free-recall response</label>
+        <textarea id="eval-free-recall" rows="3" placeholder="Type exactly what you understood from the signing motion before looking at the target sentence..."></textarea>
+      </div>
+
+      <div class="likert-block">
+        <div class="likert-row">
+          <span>Comprehension (1-5)</span>
+          <div class="likert-scale">
+            <label><input type="radio" name="comp" value="1">1</label>
+            <label><input type="radio" name="comp" value="2">2</label>
+            <label><input type="radio" name="comp" value="3">3</label>
+            <label><input type="radio" name="comp" value="4" checked>4</label>
+            <label><input type="radio" name="comp" value="5">5</label>
+          </div>
+        </div>
+
+        <div class="likert-row">
+          <span>Naturalness (1-5)</span>
+          <div class="likert-scale">
+            <label><input type="radio" name="nat" value="1">1</label>
+            <label><input type="radio" name="nat" value="2">2</label>
+            <label><input type="radio" name="nat" value="3">3</label>
+            <label><input type="radio" name="nat" value="4" checked>4</label>
+            <label><input type="radio" name="nat" value="5">5</label>
+          </div>
+        </div>
+
+        <div class="likert-row">
+          <span>Grammaticality / Face (1-5)</span>
+          <div class="likert-scale">
+            <label><input type="radio" name="gram" value="1">1</label>
+            <label><input type="radio" name="gram" value="2">2</label>
+            <label><input type="radio" name="gram" value="3">3</label>
+            <label><input type="radio" name="gram" value="4" checked>4</label>
+            <label><input type="radio" name="gram" value="5">5</label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button id="eval-submit-btn" class="btn-primary" style="flex:1;">Submit Evaluation</button>
+        <button id="eval-summary-btn" class="btn-secondary">View Study Data</button>
+      </div>
+      <div id="eval-status" style="font-size:0.84rem; color:var(--text-muted); min-height:20px;"></div>
+    </div>
+
+    <!-- Right: Quantitative Realism Benchmarks -->
+    <div class="eval-box">
+      <div>
+        <h2>Quantitative Realism Metrics</h2>
+        <p style="font-size:0.88rem;">
+          Calculates algorithmic benchmarks comparing diffusion motion generation against human motion capture.
+        </p>
+      </div>
+
+      <div class="diag-card">
+        <ul style="margin:0; padding-left:18px; line-height:1.6;">
+          <li><strong>Average Position Error (APE):</strong> Spatial error in shoulder-width units (lower is better).</li>
+          <li><strong>Dynamic Time Warping (DTW):</strong> Temporal alignment invariant to signing speed (lower is better).</li>
+          <li><strong>Jerk Ratio:</strong> Third derivative of motion relative to real signers (1.0 = matches human capture).</li>
+          <li><strong>Diversity:</strong> Pairwise sample distance across different signs (detects mode collapse).</li>
+        </ul>
+      </div>
+
+      <button id="run-metrics-btn" class="btn-secondary" style="margin-top:8px;">Run Live Benchmark (Diffusion vs Reference)</button>
+      <div id="metrics-result"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  let activeParticipantId = null;
+  const evalRole = document.getElementById("eval-role");
+  const evalYears = document.getElementById("eval-years");
+  const evalLang = document.getElementById("eval-lang");
+  const evalStimulus = document.getElementById("eval-stimulus");
+  const evalFreeRecall = document.getElementById("eval-free-recall");
+  const evalSubmitBtn = document.getElementById("eval-submit-btn");
+  const evalSummaryBtn = document.getElementById("eval-summary-btn");
+  const evalStatus = document.getElementById("eval-status");
+  const runMetricsBtn = document.getElementById("run-metrics-btn");
+  const metricsResult = document.getElementById("metrics-result");
+
+  async function ensureParticipant() {
+    if (activeParticipantId) return activeParticipantId;
+    try {
+      const res = await fetch("/api/evaluation/participant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: evalRole.value,
+          years_signing: parseFloat(evalYears.value) || 0,
+          primary_language: evalLang.value.trim() || "ASL",
+        }),
+      });
+      const data = await res.json();
+      activeParticipantId = data.participant_id;
+      return activeParticipantId;
+    } catch (err) {
+      evalStatus.textContent = `Participant registration error: ${err.message}`;
+      return null;
+    }
+  }
+
+  evalSubmitBtn?.addEventListener("click", async () => {
+    const recall = evalFreeRecall.value.trim();
+    if (!recall) {
+      evalStatus.textContent = "Please enter your free-recall response first.";
+      return;
+    }
+    const pid = await ensureParticipant();
+    if (!pid) return;
+
+    const getRating = (name) => {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? parseInt(el.value, 10) : 4;
+    };
+
+    try {
+      evalStatus.textContent = "Submitting study response…";
+      const res = await fetch("/api/evaluation/response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participant_id: pid,
+          role: evalRole.value,
+          stimulus_text: evalStimulus.value.trim() || "Where is the hospital?",
+          backend: "diffusion",
+          variant: "ASL",
+          free_recall: recall,
+          ratings: {
+            comprehension: getRating("comp"),
+            naturalness: getRating("nat"),
+            grammaticality: getRating("gram"),
+          },
+        }),
+      });
+      const data = await res.json();
+      evalStatus.textContent = `Evaluation successfully recorded (ID: ${data.response_id}). Thank you!`;
+      evalFreeRecall.value = "";
+    } catch (err) {
+      evalStatus.textContent = `Submission failed: ${err.message}`;
+    }
+  });
+
+  evalSummaryBtn?.addEventListener("click", async () => {
+    try {
+      evalStatus.textContent = "Fetching aggregated study data…";
+      const res = await fetch("/api/evaluation/summary");
+      const data = await res.json();
+      if (data.n === 0) {
+        evalStatus.textContent = "No study responses recorded yet.";
+        return;
+      }
+      let summaryText = `Total: ${data.n} ratings recorded. `;
+      if (data.by_role) {
+        summaryText += Object.entries(data.by_role)
+          .map(([r, s]) => `${r}: ${s.n} responses (mean comp: ${s.comprehension.toFixed(1)})`)
+          .join("; ");
+      }
+      evalStatus.textContent = summaryText;
+    } catch (err) {
+      evalStatus.textContent = `Fetch error: ${err.message}`;
+    }
+  });
+
+  runMetricsBtn?.addEventListener("click", async () => {
+    metricsResult.innerHTML = "<span style='color:var(--text-muted)'>Calculating diffusion realism metrics against reference capture…</span>";
+    try {
+      const res = await fetch("/api/evaluation/metrics?backend=diffusion&max_glosses=10", {
+        method: "POST",
+      });
+      const d = await res.json();
+      metricsResult.innerHTML = `
+        <table class="metrics-table">
+          <thead>
+            <tr><th>Metric</th><th>Score</th><th>Target / Reference</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Average Position Error (APE)</td><td>${d.ape.toFixed(3)}</td><td>Lower is better</td></tr>
+            <tr><td>Dynamic Time Warping (DTW)</td><td>${d.dtw.toFixed(3)}</td><td>Lower is better</td></tr>
+            <tr><td>Jerk Ratio (Smoothness)</td><td>${d.jerk_ratio.toFixed(1)}x</td><td>1.0 = matches human capture</td></tr>
+            <tr><td>Diversity (Mode Collapse)</td><td>${d.diversity.toFixed(3)}</td><td>Higher = distinct signs</td></tr>
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      metricsResult.innerHTML = `<span style="color:var(--bad)">Benchmark error: ${err.message}</span>`;
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Studio Dashboard &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="studio-grid">
+    <!-- Left: 3D Avatar Viewport -->
+    <div class="studio-stage">
+      <div id="avatar-canvas"></div>
+      <div class="studio-status-bar">
+        <span id="status-dot" class="dot connecting"></span>
+        <span id="status-text">Connecting…</span>
+        <span id="backend-badge" class="brand-badge" style="background:#f1f5f9; color:var(--text); border:1px solid var(--border-light);"></span>
+        <span id="fps-badge" class="fps-badge">25 fps</span>
+        <label style="margin-left:auto; display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-muted); cursor:pointer;">
+          <input type="checkbox" id="skeleton-debug-toggle" style="cursor:pointer;" />
+          <span>Debug Skeleton</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Right: Studio Control Console -->
+    <div class="studio-controls">
+      <div class="control-group">
+        <label for="text-input">Text input</label>
+        <textarea id="text-input" rows="3" placeholder="Enter an English sentence, e.g. Where is the hospital?">Where is the hospital?</textarea>
+        <button id="send-text-btn" class="btn-primary" style="margin-top:8px;">Generate &amp; Sign</button>
+      </div>
+
+      <div class="control-group">
+        <label>Speech input</label>
+        <div class="mic-action-bar">
+          <button id="mic-btn" class="btn-secondary">Hold to talk</button>
+          <span id="mic-status" style="font-size:0.84rem; color:var(--text-muted);"></span>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="control-group">
+          <label for="variant-select">Sign language variant</label>
+          <select id="variant-select">
+            <option value="ASL" selected>ASL (American Sign Language)</option>
+            <option value="DSGS">DSGS (Swiss German Sign Language)</option>
+            <option value="LSF-CH">LSF-CH (Swiss French Sign Language)</option>
+            <option value="LIS-CH">LIS-CH (Swiss Italian Sign Language)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="style-select">Signing style</label>
+          <select id="style-select">
+            <option value="neutral" selected>Neutral</option>
+            <option value="expressive">Expressive</option>
+            <option value="compact">Compact</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Gloss sequence</label>
+        <div id="gloss-output" class="gloss-display">—</div>
+      </div>
+
+      <div class="control-group">
+        <label>Speech transcript</label>
+        <div id="transcript-output" class="transcript-display">—</div>
+      </div>
+
+      <div class="diag-card">
+        <div><strong>Pipeline Status</strong></div>
+        <div style="margin-top:4px;">
+          Diffusion motion synthesis over 66-point spatial landmarks with Savitzky-Golay temporal smoothing.
+          Words outside the core trained dictionary are automatically expanded into fingerspelled letter sequences.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/avatar_rig.js"></script>
+<script src="/static/js/landmark_renderer.js"></script>
+<script src="/static/js/avatar.js"></script>
+<script src="/static/js/main.js"></script>
+{% endblock %}

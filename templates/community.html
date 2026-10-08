@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}2-User Social Hub &middot; SignAvatar Enterprise{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div id="auth-gate" class="eval-box" style="display:none; max-width:520px; margin:40px auto; text-align:center;">
+    <h2>🔒 Strict Authentication Required</h2>
+    <p>Please sign in to access the Community 3D Sign Feed and 2-User Sign Messenger.</p>
+    <div style="display:flex; justify-content:center; gap:12px;">
+      <a href="/login" class="btn-primary">Sign In</a>
+      <a href="/register" class="btn-secondary">Create Account</a>
+    </div>
+  </div>
+
+  <div id="community-workspace" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:20px;">
+      <div>
+        <h1 style="margin-bottom:4px;">Community Sign Feed &amp; 2-User Sign Messenger</h1>
+        <p id="active-user-label" style="margin-bottom:0;"></p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="switch-user-btn" class="btn-secondary">⇄ Switch Active User (Maya ↔ Alex)</button>
+      </div>
+    </div>
+
+    <div class="eval-workstation">
+      <!-- Interaction 1: Community Sign Feed -->
+      <div class="eval-box">
+        <h2>1. Community 3D Sign Feed</h2>
+        <form id="post-form" style="display:flex; flex-direction:column; gap:10px;">
+          <textarea id="post-content" rows="2" placeholder="Share a signed post with the community..." required></textarea>
+          <div style="display:flex; gap:10px;">
+            <select id="post-variant">
+              <option value="ASL">ASL</option>
+              <option value="DSGS">DSGS</option>
+              <option value="LSF-CH">LSF-CH</option>
+              <option value="LIS-CH">LIS-CH</option>
+            </select>
+            <button type="submit" class="btn-primary" style="white-space:nowrap;">Publish Signed Post 🤟</button>
+          </div>
+        </form>
+        <div id="feed-container" style="display:flex; flex-direction:column; gap:12px; margin-top:8px;"></div>
+      </div>
+
+      <!-- Interaction 2: Two-User Direct Sign Messenger -->
+      <div class="eval-box">
+        <h2>2. Two-User Direct Sign Messenger</h2>
+        <div id="dm-container" style="display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;"></div>
+        <form id="dm-form" style="display:flex; gap:8px; margin-top:8px;">
+          <input type="text" id="dm-input" placeholder="Send a signed message to your conversation partner..." required />
+          <button type="submit" class="btn-primary" style="white-space:nowrap;">Send &amp; Sign 🤟</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function() {
+  let token = localStorage.getItem("sa_auth_token");
+  const gate = document.getElementById("auth-gate");
+  const ws = document.getElementById("community-workspace");
+  if (!token) {
+    gate.style.display = "flex";
+    return;
+  }
+
+  let currentUser = null;
+  let peerId = "usr_alex_02";
+
+  async function loadAll() {
+    const meRes = await fetch("/api/auth/me", { headers: { "Authorization": "Bearer " + token } });
+    if (!meRes.ok) {
+      gate.style.display = "flex";
+      ws.style.display = "none";
+      return;
+    }
+    const meData = await meRes.json();
+    currentUser = meData.user;
+    peerId = currentUser.id === "usr_maya_01" ? "usr_alex_02" : "usr_maya_01";
+    ws.style.display = "block";
+    document.getElementById("active-user-label").textContent =
+      "Signed in as " + currentUser.full_name + " (@" + currentUser.username + " · " + currentUser.preferred_variant + ")";
+
+    const [feedRes, dmRes] = await Promise.all([
+      fetch("/api/social/feed", { headers: { "Authorization": "Bearer " + token } }),
+      fetch("/api/social/messages/" + peerId, { headers: { "Authorization": "Bearer " + token } })
+    ]);
+
+    if (feedRes.ok) {
+      const { posts } = await feedRes.json();
+      const feedEl = document.getElementById("feed-container");
+      feedEl.innerHTML = posts.map(p => `
+        <div class="step-detail-box">
+          <div style="display:flex; justify-content:space-between;">
+            <strong>${p.author.full_name} (@${p.author.username} · ${p.variant})</strong>
+            <span>🤟 ${p.reaction_counts.ily} · 👏 ${p.reaction_counts.clap} · 💬 ${p.comment_count}</span>
+          </div>
+          <div style="margin:6px 0; color:var(--text);">${p.content}</div>
+          <div style="font-family:var(--font-mono); font-size:0.76rem; color:var(--accent);">
+            Gloss: ${p.gloss_sequence.map(g => g.gloss).join(" · ")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    if (dmRes.ok) {
+      const { messages } = await dmRes.json();
+      const dmEl = document.getElementById("dm-container");
+      dmEl.innerHTML = messages.map(m => `
+        <div class="step-detail-box" style="border-left:3px solid ${m.sender_id === currentUser.id ? '#1d4ed8' : '#15803d'};">
+          <strong>${m.sender.full_name} → ${m.recipient.full_name} (${m.variant})</strong>
+          <div style="margin:4px 0; color:var(--text);">${m.content}</div>
+          <div style="font-family:var(--font-mono); font-size:0.76rem; color:var(--accent);">
+            Gloss: ${m.gloss_sequence.map(g => g.gloss).join(" · ")}
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  await loadAll();
+
+  document.getElementById("post-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = document.getElementById("post-content").value;
+    const variant = document.getElementById("post-variant").value;
+    await fetch("/api/social/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ content, variant, style: "expressive", avatar_model: "/models/michelle.glb", tags: [variant] })
+    });
+    document.getElementById("post-content").value = "";
+    await loadAll();
+  });
+
+  document.getElementById("dm-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = document.getElementById("dm-input").value;
+    await fetch("/api/social/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ recipient_id: peerId, content })
+    });
+    document.getElementById("dm-input").value = "";
+    await loadAll();
+  });
+
+  document.getElementById("switch-user-btn")?.addEventListener("click", async () => {
+    const nextEmail = currentUser && currentUser.username === "maya_lin" ? "alex@signavatar.ai" : "maya@signavatar.ai";
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: nextEmail, password: "SignAvatar#2026" })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      token = data.token;
+      localStorage.setItem("sa_auth_token", token);
+      await loadAll();
+    }
+  });
+})();
+</script>
+{% endblock %}

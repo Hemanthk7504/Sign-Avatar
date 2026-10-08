@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Strict Authentication &middot; SignAvatar Enterprise{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:540px; padding-top:44px;">
+  <div class="eval-box" style="box-shadow:0 12px 32px rgba(15,23,42,0.08);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="brand-badge">🔐 PBKDF2-HMAC-SHA256</span>
+      <div style="display:flex; gap:6px;">
+        <button type="button" id="tab-login" class="btn-primary" style="padding:5px 12px; font-size:0.78rem;">Sign In</button>
+        <button type="button" id="tab-register" class="btn-secondary" style="padding:5px 12px; font-size:0.78rem;">Create Account</button>
+      </div>
+    </div>
+
+    <h1 id="auth-heading" style="font-size:1.55rem; margin-bottom:2px;">Sign in to SignAvatar</h1>
+    <div id="auth-error" style="display:none; padding:10px 12px; border-radius:6px; background:var(--bad-bg); color:var(--bad); font-size:0.84rem; font-weight:500;"></div>
+
+    <!-- Sign In Form following modern-web-guidance autofill-sign-in-form -->
+    <form id="login-form" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="control-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" autocomplete="username" enterkeyhint="next" required placeholder="maya@signavatar.ai" />
+      </div>
+      <div class="control-group">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label for="current-password">Password</label>
+          <button type="button" id="toggle-pw-btn" style="background:none; border:none; color:var(--accent); font-size:0.78rem; cursor:pointer; font-weight:600;">Show password</button>
+        </div>
+        <input type="password" id="current-password" name="password" autocomplete="current-password" enterkeyhint="done" required placeholder="Enter your password" />
+      </div>
+      <button type="submit" class="btn-primary" style="padding:11px 16px; font-weight:650;">Sign In</button>
+    </form>
+
+    <!-- Registration Form -->
+    <form id="register-form" style="display:none; flex-direction:column; gap:12px;">
+      <div class="control-group">
+        <label for="reg-name">Full name</label>
+        <input type="text" id="reg-name" name="name" autocomplete="name" required placeholder="Elena Rostova" />
+      </div>
+      <div class="row-2">
+        <div class="control-group">
+          <label for="reg-email">Email address</label>
+          <input type="email" id="reg-email" name="email" autocomplete="username" required placeholder="elena@signavatar.ai" />
+        </div>
+        <div class="control-group">
+          <label for="reg-username">Username</label>
+          <input type="text" id="reg-username" name="username" required placeholder="elena_signs" />
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="new-password">Strict password (8+ chars, upper, lower, digit, symbol)</label>
+        <input type="password" id="new-password" name="password" autocomplete="new-password" required placeholder="SignAvatar#2026" />
+      </div>
+      <div class="row-2">
+        <div class="control-group">
+          <label for="reg-role">Community role</label>
+          <select id="reg-role">
+            <option value="deaf_signer">Deaf Native Signer</option>
+            <option value="certified_interpreter">Certified Interpreter</option>
+            <option value="researcher">Linguistic Researcher</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="reg-variant">Sign language</label>
+          <select id="reg-variant">
+            <option value="ASL">ASL</option>
+            <option value="DSGS">DSGS</option>
+            <option value="LSF-CH">LSF-CH</option>
+            <option value="LIS-CH">LIS-CH</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="padding:11px 16px; font-weight:650;">Create Account &amp; Sign In</button>
+    </form>
+
+    <!-- 1-Click Demo Sign-In for 2-User Testing -->
+    <div style="border-top:1px solid var(--border-light); padding-top:14px;">
+      <div style="font-size:0.82rem; font-weight:600; margin-bottom:8px;">Instant 2-User Demo Accounts:</div>
+      <div class="row-2">
+        <button type="button" id="demo-maya-btn" class="btn-secondary" style="font-size:0.8rem;">User 1: Maya Lin (Deaf ASL)</button>
+        <button type="button" id="demo-alex-btn" class="btn-secondary" style="font-size:0.8rem;">User 2: Dr. Alex Rivera</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const loginForm = document.getElementById("login-form");
+  const regForm = document.getElementById("register-form");
+  const tabLogin = document.getElementById("tab-login");
+  const tabReg = document.getElementById("tab-register");
+  const heading = document.getElementById("auth-heading");
+  const errBox = document.getElementById("auth-error");
+  const pwInput = document.getElementById("current-password");
+  const togglePw = document.getElementById("toggle-pw-btn");
+
+  function setMode(mode) {
+    errBox.style.display = "none";
+    if (mode === "register") {
+      loginForm.style.display = "none";
+      regForm.style.display = "flex";
+      heading.textContent = "Create your verified SignAvatar account";
+      tabReg.className = "btn-primary";
+      tabLogin.className = "btn-secondary";
+    } else {
+      loginForm.style.display = "flex";
+      regForm.style.display = "none";
+      heading.textContent = "Sign in to SignAvatar";
+      tabLogin.className = "btn-primary";
+      tabReg.className = "btn-secondary";
+    }
+  }
+
+  tabLogin?.addEventListener("click", () => setMode("login"));
+  tabReg?.addEventListener("click", () => setMode("register"));
+  {% if initial_mode == "register" %}setMode("register");{% endif %}
+
+  togglePw?.addEventListener("click", () => {
+    const isPw = pwInput.type === "password";
+    pwInput.type = isPw ? "text" : "password";
+    togglePw.textContent = isPw ? "Hide password" : "Show password";
+  });
+
+  async function doLogin(email, password) {
+    errBox.style.display = "none";
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Sign-in failed");
+      localStorage.setItem("sa_auth_token", data.token);
+      window.location.href = "/home";
+    } catch (e) {
+      errBox.textContent = e.message;
+      errBox.style.display = "block";
+    }
+  }
+
+  loginForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    doLogin(document.getElementById("email").value, pwInput.value);
+  });
+
+  regForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errBox.style.display = "none";
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: document.getElementById("reg-name").value,
+          email: document.getElementById("reg-email").value,
+          username: document.getElementById("reg-username").value,
+          password: document.getElementById("new-password").value,
+          role: document.getElementById("reg-role").value,
+          preferred_variant: document.getElementById("reg-variant").value
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Registration failed");
+      localStorage.setItem("sa_auth_token", data.token);
+      window.location.href = "/home";
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.style.display = "block";
+    }
+  });
+
+  document.getElementById("demo-maya-btn")?.addEventListener("click", () => doLogin("maya@signavatar.ai", "SignAvatar#2026"));
+  document.getElementById("demo-alex-btn")?.addEventListener("click", () => doLogin("alex@signavatar.ai", "SignAvatar#2026"));
+})();
+</script>
+{% endblock %}

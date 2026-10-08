@@ -1,0 +1,66 @@
+﻿{% extends "base.html" %}
+
+{% block title %}About &middot; Linguistic Methodology &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:860px;">
+  <h1>About the project</h1>
+  <p class="lead">
+    Bridging the communication gap between spoken language and sign language through
+    anatomically grounded, real-time generative motion synthesis.
+  </p>
+
+  <div style="margin:36px 0;">
+    <h2>The accessibility gap in automated signing</h2>
+    <p>
+      Historically, automated sign language systems have fallen into two failure modes: concatenating
+      pre-recorded video clips, which introduces severe visual transitions and unnatural pacing, or
+      rigid rule-based humanoid avatars that move mechanically without organic articulation.
+    </p>
+    <p>
+      More critically, most prior avatars ignore non-manual features: facial expressions, eyebrow movements,
+      and head tilt. In sign language linguistics, non-manual markers are not emotional embellishments; they
+      are grammatical operators. Furrowed eyebrows distinguish a WH-question ("where", "who") from a
+      statement, while a brow raise marks a yes/no question or conditional clause. Omitting them renders
+      the output ungrammatical or incomprehensible to native Deaf signers.
+    </p>
+  </div>
+
+  <div style="margin:36px 0;">
+    <h2>Generative diffusion over continuous space</h2>
+    <p>
+      Our framework treats signing as a continuous probabilistic trajectory in 3D Euclidean space. By training
+      a conditional diffusion denoiser over real MediaPipe Holistic human captures, the model learns the natural
+      kinematic distribution of human articulation. Manual handshapes and non-manual facial markers are
+      synthesized simultaneously in a single generative pass, preserving both the sign vocabulary and its
+      grammatical context.
+    </p>
+  </div>
+
+  <div style="margin:36px 0;">
+    <h2>Ethics and Deaf-centered evaluation</h2>
+    <p>
+      The sign language processing research community has historically caused harm by deploying systems
+      without the consultation, leadership, or validation of the Deaf and hard-of-hearing community.
+    </p>
+    <p>
+      To ensure clinical credibility and authentic utility, our evaluation protocol separates technical
+      metrics (such as Average Position Error and jerk ratio) from human intelligibility testing.
+      Intelligibility trials are conducted with certified sign language interpreters and Deaf signers using
+      a pre-reveal free-recall protocol: participants record what they understood before the target text is
+      revealed, preventing priming contamination.
+    </p>
+  </div>
+
+  <div class="feature-block" style="margin-top:32px; background:#f8fafc;">
+    <h3 style="margin-top:0;">Collaborate with our evaluation panel</h3>
+    <p>
+      If you are a certified interpreter or a native signer interested in contributing to our validation
+      studies, access the testing workstation below.
+    </p>
+    <div style="margin-top:14px;">
+      <a href="/evaluation" class="btn-primary">Open Interpreter Hub</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

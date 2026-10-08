@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+  <header class="site-nav">
+    <a href="/" class="nav-brand">
+      <span>🤟 SignAvatar Enterprise</span>
+      <span class="brand-badge">Diffusion 3D</span>
+    </a>
+    <nav class="nav-links" aria-label="Main Navigation">
+      <a href="/" class="{% if active_page == 'landing' %}active{% endif %}">Overview</a>
+      <a href="/home" class="{% if active_page == 'home' %}active{% endif %}">Home Hub</a>
+      <a href="/community" class="{% if active_page == 'community' %}active{% endif %}">Social Hub (2-User)</a>
+      <a href="/dashboard" class="{% if active_page == 'dashboard' %}active{% endif %}">3D Studio</a>
+      <a href="/evaluation" class="{% if active_page == 'evaluation' %}active{% endif %}">Evaluation</a>
+      <a href="/how-it-works" class="{% if active_page == 'how_it_works' %}active{% endif %}">Architecture</a>
+    </nav>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <a href="/login" id="nav-auth-link" class="btn-secondary" style="padding:6px 12px; font-size:0.82rem;">Sign In</a>
+      <a href="/dashboard" class="btn-primary" style="padding:6px 14px; font-size:0.82rem;">Launch Studio</a>
+    </div>
+  </header>
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div>
+        <strong>SignAvatar Enterprise</strong> &middot; Continuous generative 3D sign language synthesis &amp; 2-user social network.
+      </div>
+      <div class="footer-links">
+        <a href="/home">Home Workspace</a>
+        <a href="/community">2-User Social Hub</a>
+        <a href="/how-it-works">Architecture</a>
+        <a href="/evaluation">Interpreter Study</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      const token = localStorage.getItem("sa_auth_token");
+      const authLink = document.getElementById("nav-auth-link");
+      if (token && authLink) {
+        fetch("/api/auth/me", { headers: { "Authorization": "Bearer " + token } })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && data.user) {
+              authLink.textContent = "✓ " + data.user.full_name;
+              authLink.href = "/home";
+            }
+          })
+          .catch(() => {});
+      }
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
