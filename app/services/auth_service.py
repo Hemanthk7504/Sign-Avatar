@@ -33,7 +33,8 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 5
 SESSION_TTL_HOURS = 24
 
-_db_lock = threading.Lock()
+_db_lock = threading.RLock()
+_initialized_auth_dbs: set[str] = set()
 
 VALID_ROLES = (
     "deaf_signer",
@@ -53,9 +54,11 @@ def _now_iso() -> str:
 
 def get_db_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-    conn = sqlite3.connect(db_path, check_same_thread=False)
+    conn = sqlite3.connect(db_path, timeout=20.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     return conn
 
 
@@ -155,7 +158,11 @@ def _row_to_public_user(row: sqlite3.Row) -> dict:
 
 
 def init_auth_db(db_path: str = DB_PATH) -> None:
+    if db_path in _initialized_auth_dbs and os.path.exists(db_path):
+        return
     with _db_lock:
+        if db_path in _initialized_auth_dbs and os.path.exists(db_path):
+            return
         conn = get_db_connection(db_path)
         try:
             conn.executescript(
@@ -190,6 +197,7 @@ def init_auth_db(db_path: str = DB_PATH) -> None:
             )
             conn.commit()
             _seed_default_users(conn)
+            _initialized_auth_dbs.add(db_path)
         finally:
             conn.close()
 

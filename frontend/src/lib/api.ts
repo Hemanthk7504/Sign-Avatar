@@ -147,7 +147,12 @@ export interface PlatformStats {
   };
 }
 
-const API_BASE = typeof window !== "undefined" ? "" : "http://127.0.0.1:8000";
+const API_BASE =
+  typeof window !== "undefined"
+    ? window.location.port === "3000"
+      ? `http://${window.location.hostname}:8000`
+      : ""
+    : "http://127.0.0.1:8000";
 const TOKEN_STORAGE_KEY = "sa_auth_token";
 
 export function getStoredToken(): string | null {

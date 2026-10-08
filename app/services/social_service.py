@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -33,6 +34,7 @@ from app.services.text_to_gloss import text_to_gloss
 logger = logging.getLogger("sign_avatar.social")
 
 VALID_REACTIONS = ("like", "ily", "clap", "fire")
+_initialized_social_dbs: set[str] = set()
 
 
 def _extract_gloss_dicts(text: str) -> List[Dict]:
@@ -49,8 +51,12 @@ def _extract_gloss_dicts(text: str) -> List[Dict]:
 
 
 def init_social_db(db_path: str = DB_PATH) -> None:
+    if db_path in _initialized_social_dbs and os.path.exists(db_path):
+        return
     init_auth_db(db_path)
     with _db_lock:
+        if db_path in _initialized_social_dbs and os.path.exists(db_path):
+            return
         conn = get_db_connection(db_path)
         try:
             conn.executescript(
@@ -117,6 +123,7 @@ def init_social_db(db_path: str = DB_PATH) -> None:
             )
             conn.commit()
             _seed_social_data(conn)
+            _initialized_social_dbs.add(db_path)
         finally:
             conn.close()
 
@@ -735,14 +742,14 @@ def send_direct_message(
                 ),
             )
             conn.commit()
-
-            messages = list_direct_messages(sender_id, recipient_id, db_path=db_path)
-            for m in reversed(messages):
-                if m["id"] == msg_id:
-                    return m
-            return messages[-1]
         finally:
             conn.close()
+
+    messages = list_direct_messages(sender_id, recipient_id, db_path=db_path)
+    for m in reversed(messages):
+        if m["id"] == msg_id:
+            return m
+    return messages[-1]
 
 
 def react_to_direct_message(
